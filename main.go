@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/csv"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"regexp"
 	"strings"
@@ -146,7 +145,7 @@ func main() {
 	dir = strings.TrimSpace(dir) // Remove newline
 
 	// Count CSV files to be processed
-	files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 	if err != nil {
 		fmt.Println("Error reading directory:", err)
 		return
