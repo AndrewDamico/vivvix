@@ -51,14 +51,15 @@ func parser(line string) DateRange {
 	}
 }
 
-func processFile(dir, filename string) {
+func processFile(dir, filename string) bool {
 	filePath := dir + "/" + filename
 
 	// Open the file for reading
 	file, err := os.Open(filePath)
 	if err != nil {
 		fmt.Printf("Error opening file %s: %v\n", filename, err)
-		return
+		return false
+
 	}
 
 	scanner := bufio.NewScanner(file)
@@ -86,17 +87,21 @@ func processFile(dir, filename string) {
 		err := os.MkdirAll(validateDir, 0755)
 		if err != nil {
 			fmt.Printf("Error creating directory %s: %v\n", validateDir, err)
-			return
+			return false
+
 		}
 	}
 
 	if err := os.Rename(filePath, newPath); err != nil {
 		fmt.Printf("Error renaming file %s to %s: %v\n", filename, newName, err)
-		return
+		return false
+
 	}
 
 	// Log the change
 	logChange(dir+"/rename_log.csv", filename, newName, dateRange.StartDate, dateRange.EndDate)
+
+	return true
 }
 
 func logChange(logFile, oldName, newName, startDate, endDate string) {
@@ -132,6 +137,7 @@ func logChange(logFile, oldName, newName, startDate, endDate string) {
 }
 
 func main() {
+	fmt.Println("Vivvex Report Converter")
 	reader := bufio.NewReader(os.Stdin)
 
 	// asks user to input working directory
@@ -165,12 +171,20 @@ func main() {
 		return
 	}
 
+	successfulCount := 0
+
 	for _, file := range files {
 		if file.Name() == "rename_log.csv" {
 			continue
 		}
 		if strings.HasSuffix(file.Name(), ".csv") {
-			processFile(dir, file.Name())
+			if processFile(dir, file.Name()) { // Process the file and check if it was successful
+				successfulCount++
+			}
 		}
 	}
+
+	fmt.Printf("%d files were successfully converted.\n", successfulCount)
+	fmt.Println("Press 'Enter' to exit...")
+	reader.ReadString('\n')
 }
