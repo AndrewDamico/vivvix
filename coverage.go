@@ -1,4 +1,7 @@
-package main
+// VIVVIX AdSpender Conversion App
+// Copyright (c) 2023 Northwestern University
+// Author: Andrew D'Amico
+// Date: 10/18/2023package main
 
 import (
 	"bufio"
