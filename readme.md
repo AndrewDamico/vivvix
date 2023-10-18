@@ -14,3 +14,10 @@ If directory information is not found:
 1. navigate to the Configuration menu
 2. Select option 2 'Set Import Directory'
 3. Load your input directory
+
+## Compiling 
+To compile the application for windows:
+1. Compile the resource file:
+'''windres -o versioninfo.syso versioninfo.rc'''
+2. Build the application
+''' go build -o vivvixconverter.exe''''
