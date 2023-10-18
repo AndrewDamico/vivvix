@@ -62,7 +62,7 @@ func findMissingDates() {
 	}
 
 	// Create a map to track the days for which we have data
-	dateMap := make(map[string]bool)
+	dateMap := make(map[string][]string)
 
 	for _, file := range files {
 		if file.IsDir() || !strings.HasSuffix(file.Name(), ".json") {
@@ -97,7 +97,9 @@ func findMissingDates() {
 
 		currentDay := startDateParsed
 		for currentDay.Before(endDateParsed.AddDate(0, 0, 1)) {
-			dateMap[currentDay.Format("01-02-2006")] = true
+			// Add the filename to the slice for this date
+			dateStr := currentDay.Format("01-02-2006")
+			dateMap[dateStr] = append(dateMap[dateStr], file.Name())
 			currentDay = currentDay.AddDate(0, 0, 1)
 		}
 	}
@@ -120,5 +122,21 @@ func findMissingDates() {
 		for _, date := range missingDates {
 			fmt.Println(date)
 		}
+	}
+
+	multiFileDates := make(map[string][]string)
+	for date, filenames := range dateMap {
+		if len(filenames) > 1 {
+			multiFileDates[date] = filenames
+		}
+	}
+
+	if len(multiFileDates) > 0 {
+		fmt.Println("\nDates covered by multiple files:")
+		for date, filenames := range multiFileDates {
+			fmt.Printf("%s: %s\n", date, strings.Join(filenames, ", "))
+		}
+	} else {
+		fmt.Println("\nThere are no dates covered by multiple files.")
 	}
 }
