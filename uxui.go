@@ -56,6 +56,7 @@ func MainMenu() {
 		case 1:
 			clearScreen()
 			converter()
+			menuReset()
 		// get coverage
 		case 2:
 			clearScreen()
@@ -65,6 +66,7 @@ func MainMenu() {
 		case 3:
 			clearScreen()
 			optionsMenu()
+			//menuReset()
 		default:
 			fmt.Println("Invalid choice! Please try again.")
 		}

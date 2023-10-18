@@ -287,7 +287,7 @@ func converter() {
 	choice = strings.TrimSpace(choice)
 
 	if choice != "y" && choice != "Y" {
-		fmt.Println("Exiting program.")
+		fmt.Println("No selection made.")
 		return
 	}
 
@@ -305,6 +305,6 @@ func converter() {
 	}
 
 	fmt.Printf("%d files were successfully converted.\n", successfulCount)
-	fmt.Println("Press 'Enter' to exit...")
-	reader.ReadString('\n')
+	//fmt.Println("Press 'Enter' to exit...")
+	//reader.ReadString('\n')
 }
