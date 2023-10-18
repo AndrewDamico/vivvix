@@ -18,6 +18,10 @@ If directory information is not found:
 ## Compiling 
 To compile the application for windows:
 1. Compile the resource file:
-'''windres -o versioninfo.syso versioninfo.rc'''
+```
+windres -o versioninfo.syso versioninfo.rc
+```
 2. Build the application
-''' go build -o vivvixconverter.exe''''
+```
+go build -o vivvixconverter.exe
+```
