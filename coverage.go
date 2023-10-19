@@ -16,6 +16,7 @@ import (
 )
 
 func findMissingDates() {
+	// determines if any dates are missing in the range provided
 
 	reader := bufio.NewReader(os.Stdin)
 

@@ -9,6 +9,7 @@ import (
 	"fmt"
 )
 
+// set global settings variable
 var settings UserSettings
 
 func main() {
