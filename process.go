@@ -63,6 +63,22 @@ func parser(line string) DateRange {
 	}
 }
 
+func safeClose(file *os.File) {
+	if file == nil {
+		return // If the file reference is nil, we don't need to do anything.
+	}
+
+	// Try to close the file and check for the specific error indicating the file is already closed.
+	err := file.Close()
+	if err != nil {
+		// We can check for a specific error like "file already closed" and avoid printing or handling it if that's the case.
+		// Otherwise, we handle unexpected errors (like a failing disk or a bug causing premature closing).
+		if !strings.Contains(err.Error(), "file already closed") {
+			fmt.Printf("Encountered an error while closing file: %v\n", err)
+		}
+	}
+}
+
 func processFile(dir, filename string) bool {
 	filePath := dir + "/" + filename
 
@@ -73,16 +89,6 @@ func processFile(dir, filename string) bool {
 		return false
 	}
 
-	defer func() {
-		cerr := file.Close()
-		if cerr != nil {
-			// This will handle the close error
-			fmt.Printf("Error closing file %s: %v\n", filename, cerr)
-			// Note: We're printing the error here, but depending on your application's requirements,
-			// you might want to handle this error differently, perhaps by logging it or aggregating it into an error report.
-		}
-	}()
-
 	// Create a temporary file.
 	tempFilePath := filePath + ".tmp"
 	tempFile, err := os.Create(tempFilePath)
@@ -91,15 +97,7 @@ func processFile(dir, filename string) bool {
 		return false
 	}
 
-	defer func() {
-		cerr := tempFile.Close()
-		if cerr != nil {
-			// This will handle the close error
-			fmt.Printf("Error closing file %s: %v\n", filename, cerr)
-			// Note: We're printing the error here, but depending on your application's requirements,
-			// you might want to handle this error differently, perhaps by logging it or aggregating it into an error report.
-		}
-	}()
+	defer safeClose(tempFile)
 
 	scanner := bufio.NewScanner(file)
 	writer := bufio.NewWriter(tempFile)
@@ -183,15 +181,7 @@ func processFile(dir, filename string) bool {
 	newPath := dir + "/validated/" + newName
 
 	// Close the file explicitly before renaming
-	defer func() {
-		cerr := file.Close()
-		if cerr != nil {
-			// This will handle the close error
-			fmt.Printf("Error closing file %s: %v\n", filename, cerr)
-			// Note: We're printing the error here, but depending on your application's requirements,
-			// you might want to handle this error differently, perhaps by logging it or aggregating it into an error report.
-		}
-	}()
+	defer safeClose(file)
 
 	// Create 'validated' folder if it doesn't exist
 	if _, err := os.Stat(validateDir); os.IsNotExist(err) {
@@ -248,15 +238,7 @@ func writeMetaData(metaData Metadata, metaDataPath string) error {
 		return err
 	}
 
-	defer func() {
-		cerr := file.Close()
-		if cerr != nil {
-			// This will handle the close error
-			fmt.Printf("Error closing file: %v\n", cerr)
-			// Note: We're printing the error here, but depending on your application's requirements,
-			// you might want to handle this error differently, perhaps by logging it or aggregating it into an error report.
-		}
-	}()
+	defer safeClose(file)
 
 	encoder := json.NewEncoder(file)
 	err = encoder.Encode(metaData)
@@ -281,15 +263,7 @@ func logChange(logFile, oldName, newName, startDate, endDate string) {
 		return
 	}
 
-	defer func() {
-		cerr := file.Close()
-		if cerr != nil {
-			// This will handle the close error
-			fmt.Printf("Error closing file: %v\n", cerr)
-			// Note: We're printing the error here, but depending on your application's requirements,
-			// you might want to handle this error differently, perhaps by logging it or aggregating it into an error report.
-		}
-	}()
+	defer safeClose(file)
 
 	writer := csv.NewWriter(file)
 	defer writer.Flush()
