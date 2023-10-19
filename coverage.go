@@ -3,6 +3,8 @@
 // Author: Andrew D'Amico
 // Date: 10/18/2023package main
 
+package main
+
 import (
 	"bufio"
 	"encoding/json"
