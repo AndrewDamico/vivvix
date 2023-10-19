@@ -96,37 +96,50 @@ func combineCSVFiles(files []string, combinedFilePath string) error {
 	if err != nil {
 		return err
 	}
-	SafeClose(combinedFile)
+	// Do not close here; instead, defer the close operation after confirming the file is open.
+	defer combinedFile.Close()
 
 	writer := csv.NewWriter(combinedFile)
+	// Ensure the writer buffer is flushed when done.
 	defer writer.Flush()
 
-	// Process each file
+	// Process each file.
 	for _, file := range files {
+		// Open the file for reading.
 		csvFile, err := os.Open(file)
 		if err != nil {
 			return err
 		}
-		defer SafeClose(csvFile)
 
 		reader := csv.NewReader(csvFile)
+
+		// Read the current CSV file's records.
 		records, err := reader.ReadAll()
 		if err != nil {
+			csvFile.Close() // Close the file promptly, avoiding defer in the loop.
 			return err
 		}
 
-		// Skip the header if it's not the first file to avoid duplicate headers
+		// Skip the header if it's not the first file to avoid duplicate headers.
 		if file != files[0] {
 			records = records[1:]
 		}
 
+		// Write records to the combined CSV file.
 		err = writer.WriteAll(records)
 		if err != nil {
+			csvFile.Close() // Close the file promptly, avoiding defer in the loop.
 			return err
+		}
+
+		// Close the current CSV file before moving to the next one.
+		// This step is crucial to avoid having too many files open simultaneously.
+		if errClose := csvFile.Close(); errClose != nil {
+			return errClose // Handle the close operation error.
 		}
 	}
 
-	return nil
+	return nil // No error occurred during the processing.
 }
 
 func processCSVFiles(partialDir, metaDataDir, combinedDir, processedDir string) error {

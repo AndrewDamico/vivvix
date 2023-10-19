@@ -10,9 +10,11 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -61,6 +63,16 @@ func getType(dayCount int, searchIndicator string) string {
 		return "partial"
 	}
 	return "weekly"
+}
+
+// intInSlice checks if a number is in the list.
+func intInSlice(num int, list []int) bool {
+	for _, a := range list {
+		if a == num {
+			return true
+		}
+	}
+	return false
 }
 
 // parser reads a string and extracts the dates
@@ -263,6 +275,110 @@ func processFile(dir, filename string) bool {
 	// Close the file explicitly before renaming
 	defer SafeClose(file)
 
+	// Modify the CSVs
+
+	// Open the temporary CSV file for reading.
+	tempFile, err = os.Open(tempFilePath)
+	if err != nil {
+		fmt.Printf("Error opening temporary file for reading: %v\n", err)
+		return false
+	}
+	defer tempFile.Close() // ensure the file is closed after this function completes
+
+	// Create a new temporary file that will store the final version of the CSV.
+	finalTempFilePath := filePath + ".final.tmp"
+	finalTempFile, err := os.Create(finalTempFilePath)
+	if err != nil {
+		fmt.Printf("Error creating final temporary file: %v\n", err)
+		return false
+	}
+	defer finalTempFile.Close() // ensure the file is closed after this function completes
+
+	reader := csv.NewReader(tempFile)
+	rewriter := csv.NewWriter(finalTempFile)
+
+	// Process the header to identify and remove any columns that start with a number and ensure the "TOTAL DIGITAL IMP" column exists.
+	header, err := reader.Read()
+	if err != nil {
+		fmt.Printf("Error reading header: %v\n", err)
+		return false
+	}
+
+	var newHeader []string
+	var indicesToDrop []int
+	totalDigitalImpExists := false
+
+	for i, column := range header {
+		if strings.HasPrefix(column, "TOTAL DIGITAL IMP") {
+			totalDigitalImpExists = true
+		}
+
+		// Check if the column starts with a number (indicating a date, likely in a custom format).
+		if _, err := strconv.Atoi(string(column[0])); err == nil {
+			indicesToDrop = append(indicesToDrop, i) // mark column index for dropping
+		} else {
+			newHeader = append(newHeader, column) // this column is fine, include it in the new header
+		}
+	}
+
+	// If "TOTAL DIGITAL IMP" doesn't exist, we add it.
+	if !totalDigitalImpExists {
+		newHeader = append(newHeader, "TOTAL DIGITAL IMP")
+	}
+
+	// Write the new header to the final temporary CSV file.
+	if err := rewriter.Write(newHeader); err != nil {
+		fmt.Printf("Error writing new header to final temp file: %v\n", err)
+		return false
+	}
+
+	// Now, we need to process the remaining records in the same manner, dropping the unnecessary columns.
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break // end of file
+		}
+		if err != nil {
+			fmt.Printf("Error reading record: %v\n", err)
+			return false
+		}
+
+		var newRecord []string
+		for i, value := range record {
+			if !intInSlice(i, indicesToDrop) {
+				newRecord = append(newRecord, value)
+			}
+		}
+
+		// If "TOTAL DIGITAL IMP" column didn't exist, add an empty field in its place for each record.
+		if !totalDigitalImpExists {
+			newRecord = append(newRecord, "") // add empty value for the "TOTAL DIGITAL IMP" column
+		}
+
+		// Write the new record to the final temporary CSV file.
+		if err := rewriter.Write(newRecord); err != nil {
+			fmt.Printf("Error writing record to final temp file: %v\n", err)
+			return false
+		}
+	}
+
+	// Make sure to flush the writer to ensure all buffered operations have been applied to the file.
+	rewriter.Flush()
+
+	if err := rewriter.Error(); err != nil {
+		fmt.Printf("Error during writer flush: %v\n", err)
+		return false
+	}
+
+	tempFile.Close()
+
+	// Now, we don't need the original temporary file anymore. We can delete it.
+	if err := os.Remove(tempFilePath); err != nil {
+		fmt.Printf("Error removing original temporary file: %v\n", err)
+		// Decide how you want to handle the error. If you want to stop processing, you can return false here.
+		// Otherwise, you may log the issue and decide on a suitable course of action (like retrying deletion or just continuing).
+		// This may depend on how critical it is for your application to ensure that these temporary files are deleted.
+	}
 	// Create 'partial' folder if it doesn't exist
 	if _, err := os.Stat(partialDir); os.IsNotExist(err) {
 		err := os.MkdirAll(partialDir, 0755)
@@ -303,7 +419,9 @@ func processFile(dir, filename string) bool {
 		newPath = partialDir + "/" + newName
 	}
 
-	if err := os.Rename(tempFilePath, newPath); err != nil {
+	finalTempFile.Close()
+
+	if err := os.Rename(finalTempFilePath, newPath); err != nil {
 		fmt.Printf("Error renaming file: %v\n", filename, newName, err)
 		return false
 	}
