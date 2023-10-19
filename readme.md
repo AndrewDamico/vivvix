@@ -23,5 +23,5 @@ windres -o versioninfo.syso versioninfo.rc
 ```
 2. Build the application
 ```
-go build -o 'vivvix report converter.exe'
+go build -o 'Vivvix Report Converter.exe'
 ```
