@@ -287,7 +287,8 @@ func logChange(logFile, oldName, newName, startDate, endDate string) {
 
 func converter() {
 	// script to identify number of files to be processed and process each
-
+	fmt.Println("VIVVIX AdSpender Converter: Convert VIVVIX reports")
+	fmt.Println("")
 	reader := bufio.NewReader(os.Stdin)
 
 	// Check if the directory is set in the settings.

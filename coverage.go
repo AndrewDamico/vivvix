@@ -16,6 +16,8 @@ import (
 )
 
 func findMissingDates() {
+	fmt.Println("VIVVIX AdSpender Converter: View Existing Coverage")
+	fmt.Println("")
 	// determines if any dates are missing in the range provided
 
 	reader := bufio.NewReader(os.Stdin)
