@@ -24,9 +24,9 @@ type UserSettings struct {
 	// Add other fields as needed
 }
 
-// loadSettings attempts to load user settings from a file.
-// If the file does not exist, it returns an error that signals no settings.
 func loadSettings() error {
+	// loadSettings attempts to load user settings from a file.
+	// If the file does not exist, it returns an error that signals no settings.
 	data, err := os.ReadFile(FilePath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -50,8 +50,8 @@ func loadSettings() error {
 	return nil // No error occurred
 }
 
-// saveSettings writes the current state of the 'settings' global variable to a file.
 func saveSettings() error {
+	// saveSettings writes the current state of the 'settings' global variable to a file.
 	data, err := json.MarshalIndent(settings, "", "    ") // Pretty print JSON
 	if err != nil {
 		return err
@@ -59,8 +59,8 @@ func saveSettings() error {
 	return os.WriteFile(FilePath, data, 0644)
 }
 
-// getSettings retrieves the settings and prints them. It returns the settings for further use.
 func getSettings() UserSettings {
+	// getSettings retrieves the settings and prints them. It returns the settings for further use.
 	// If settings were not previously loaded, load them now
 	if settings == (UserSettings{}) { // assuming zero value means not loaded
 		err := loadSettings()
@@ -72,6 +72,7 @@ func getSettings() UserSettings {
 }
 
 func setSettings(settingType string) {
+	// function to set the individual settings
 	reader := bufio.NewReader(os.Stdin)
 
 	switch settingType {

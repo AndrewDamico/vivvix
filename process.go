@@ -64,6 +64,7 @@ func parser(line string) DateRange {
 }
 
 func safeClose(file *os.File) {
+	// safely closes a file if it is not already closed. Avoids unnecessary errors.
 	if file == nil {
 		return // If the file reference is nil, we don't need to do anything.
 	}
@@ -80,6 +81,7 @@ func safeClose(file *os.File) {
 }
 
 func processFile(dir, filename string) bool {
+	// processes a file removing VIVVIX header and footer information
 	filePath := dir + "/" + filename
 
 	// Open the file for reading.
@@ -230,8 +232,8 @@ func processFile(dir, filename string) bool {
 	return true
 }
 
-// New function to write metadata information
 func writeMetaData(metaData Metadata, metaDataPath string) error {
+	// New function to write metadata information
 	// Convert struct to JSON
 	file, err := os.Create(metaDataPath)
 	if err != nil {
@@ -250,6 +252,7 @@ func writeMetaData(metaData Metadata, metaDataPath string) error {
 }
 
 func logChange(logFile, oldName, newName, startDate, endDate string) {
+	// logs changes in the log file
 	// Check if log file already exists
 	fileExists := true
 	if _, err := os.Stat(logFile); os.IsNotExist(err) {
@@ -283,6 +286,7 @@ func logChange(logFile, oldName, newName, startDate, endDate string) {
 }
 
 func converter() {
+	// script to identify number of files to be processed and process each
 
 	reader := bufio.NewReader(os.Stdin)
 

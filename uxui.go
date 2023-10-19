@@ -13,6 +13,7 @@ import (
 )
 
 func clearScreen() {
+	// helper function to clear the terminal window
 	screen.Clear()
 	screen.MoveTopLeft()
 }
