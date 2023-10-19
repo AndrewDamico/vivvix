@@ -32,9 +32,8 @@ func MainMenu() {
 	}
 
 	for {
-		fmt.Println("VIVVIX AdSpender Converter")
-		fmt.Println("")
-		fmt.Println("Main Menu")
+		fmt.Println("VIVVIX AdSpender Converter: Main Menu")
+		fmt.Println()
 		fmt.Println("Please choose one of the following options:")
 		fmt.Println("1. Convert Files")
 		fmt.Println("2. View Existing Coverage")
@@ -92,7 +91,7 @@ func optionsMenu() {
 		settings := getSettings()
 
 		clearScreen()
-		fmt.Println("Configuration Menu")
+		fmt.Println("VIVVIX AdSpender Converter: Configuration Menu")
 		fmt.Println()
 
 		autoDeleteStatus := "Disabled"
@@ -109,6 +108,7 @@ func optionsMenu() {
 
 		fmt.Printf("1. Current directory for processing: [%s]\n", directoryStatus)
 		fmt.Printf("2. Auto-delete of files after processing: [%s]\n", autoDeleteStatus)
+		fmt.Println()
 		fmt.Println("Press Enter to Return to Previous Menu")
 
 		var err error
@@ -125,11 +125,17 @@ func optionsMenu() {
 			fmt.Println()
 		case 1:
 			clearScreen()
+			fmt.Println("VIVVIX AdSpender Converter: Configuration Menu")
+			fmt.Println("Config: Set Directory")
+			fmt.Println()
 			fmt.Println("Please set the new working directory")
 			setSettings("Directory")
 			menuReset()
 		case 2:
 			clearScreen()
+			fmt.Println("VIVVIX AdSpender Converter: Configuration Menu")
+			fmt.Println("Config: Auto Delete")
+			fmt.Println()
 			fmt.Println("Please set auto delete of files after processing")
 			setSettings("AutoDelete")
 			menuReset()
