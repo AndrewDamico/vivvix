@@ -9,7 +9,7 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Northwestern University\0"
             VALUE "FileDescription", "Conversion tool for VIVVIX files\0"
-            VALUE "FileVersion", "1.0.0.0\0"
+            VALUE "FileVersion", "1.1.0.0\0"
             VALUE "InternalName", "VIVVIX Converter\0"
             VALUE "LegalCopyright", "Copyright (C) 2023 Northwestern University\0"
             VALUE "OriginalFilename", "YourApp.exe\0"

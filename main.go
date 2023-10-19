@@ -5,13 +5,17 @@
 
 package main
 
-import "fmt"
+import (
+	"fmt"
+)
 
-// TODO add Trancation and header removal
+var settings UserSettings
 
 func main() {
-	fmt.Println("Case Study Generator")
-	fmt.Println("Andrew D'Amico")
-	fmt.Println()
+	err := loadSettings() // Initialize your settings
+	if err != nil {
+		fmt.Println("Error loading settings:", err)
+		return
+	}
 	MainMenu()
 }

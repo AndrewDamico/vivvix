@@ -10,25 +10,40 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
 
 func findMissingDates() {
 
-	settings, err := loadSettings()
-	if err != nil {
-		fmt.Println("Error loading settings:", err)
-		return
-	}
-
-	if settings.Directory != "" {
-		fmt.Println("Current directory in settings:", settings.Directory)
-	} else {
-		fmt.Println("No directory set in settings.")
-	}
-
 	reader := bufio.NewReader(os.Stdin)
+
+	// Check if the directory is set in the settings.
+	if settings.Directory == "" {
+		// If no directory is set, propose the current executable's directory.
+		exe, err := os.Executable() // Get the path of the executable.
+		if err != nil {
+			fmt.Println("Failed to determine the current executable's directory:", err)
+			return
+		}
+		exeDir := filepath.Dir(exe) // Get the directory the executable is located in.
+
+		// Prompt the user to confirm using the current directory.
+		fmt.Printf("No directory set in settings. Would you like to use the current directory? (%s) [Y/n]: ", exeDir)
+		choice, _ := reader.ReadString('\n')
+		// Cleaning the input (removing \n or \r\n depending on the OS)
+		choice = strings.TrimSpace(choice)
+
+		if choice == "Y" || choice == "y" || choice == "" { // If user agrees or just hits enter (default yes).
+			settings.Directory = exeDir
+		} else {
+			fmt.Println("Operation cancelled by the user.")
+			return // Exit the function since the user did not agree.
+		}
+	} else {
+		fmt.Println("Current directory in settings:", settings.Directory)
+	}
 
 	// Prompt user for start and end date
 	fmt.Print("Enter start date (MM-DD-YYYY): ")

@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -71,7 +72,16 @@ func processFile(dir, filename string) bool {
 		fmt.Printf("Error opening file %s: %v\n", filename, err)
 		return false
 	}
-	defer file.Close()
+
+	defer func() {
+		cerr := file.Close()
+		if cerr != nil {
+			// This will handle the close error
+			fmt.Printf("Error closing file %s: %v\n", filename, cerr)
+			// Note: We're printing the error here, but depending on your application's requirements,
+			// you might want to handle this error differently, perhaps by logging it or aggregating it into an error report.
+		}
+	}()
 
 	// Create a temporary file.
 	tempFilePath := filePath + ".tmp"
@@ -80,7 +90,16 @@ func processFile(dir, filename string) bool {
 		fmt.Printf("Error creating temporary file: %v\n", err)
 		return false
 	}
-	defer tempFile.Close()
+
+	defer func() {
+		cerr := tempFile.Close()
+		if cerr != nil {
+			// This will handle the close error
+			fmt.Printf("Error closing file %s: %v\n", filename, cerr)
+			// Note: We're printing the error here, but depending on your application's requirements,
+			// you might want to handle this error differently, perhaps by logging it or aggregating it into an error report.
+		}
+	}()
 
 	scanner := bufio.NewScanner(file)
 	writer := bufio.NewWriter(tempFile)
@@ -131,26 +150,48 @@ func processFile(dir, filename string) bool {
 		return false
 	}
 
-	// Delete the original file.
-	if err = os.Remove(filePath); err != nil {
-		fmt.Printf("Error removing original file: %v\n", err)
-		return false
+	if settings.AutoDelete {
+
+		// Delete the original file.
+		if err = os.Remove(filePath); err != nil {
+			fmt.Printf("Error removing original file: %v\n", err)
+			return false
+		}
 	}
 
-	// Rename the temporary file back to the original file.
-	if err = os.Rename(tempFilePath, filePath); err != nil {
-		fmt.Printf("Error renaming temporary file: %v\n", err)
-		return false
-	}
-
+	// Extract the dates from the line.
 	dateRange := parser(line5)
+
+	// Check if the dates were successfully extracted.
+	if dateRange.StartDate == "" || dateRange.EndDate == "" {
+		fmt.Printf("Error: Couldn't extract dates from file %s\n", filename)
+
+		// Before returning false, we should clean up by removing the temporary file.
+		// This ensures no incorrect files are left behind due to the error.
+		cleanupErr := os.Remove(tempFilePath)
+		if cleanupErr != nil {
+			fmt.Printf("Error cleaning up temporary file: %v\n", cleanupErr)
+			// Even if cleanup fails, we still return false as the main operation was not successful.
+		}
+
+		return false // Return false because the process failed at an important step.
+	}
+
 	startDate := dateRange.StartDate
 	newName := startDate + ".csv"
 	validateDir := dir + "/validated"
 	newPath := dir + "/validated/" + newName
 
 	// Close the file explicitly before renaming
-	file.Close()
+	defer func() {
+		cerr := file.Close()
+		if cerr != nil {
+			// This will handle the close error
+			fmt.Printf("Error closing file %s: %v\n", filename, cerr)
+			// Note: We're printing the error here, but depending on your application's requirements,
+			// you might want to handle this error differently, perhaps by logging it or aggregating it into an error report.
+		}
+	}()
 
 	// Create 'validated' folder if it doesn't exist
 	if _, err := os.Stat(validateDir); os.IsNotExist(err) {
@@ -172,8 +213,8 @@ func processFile(dir, filename string) bool {
 		}
 	}
 
-	if err := os.Rename(filePath, newPath); err != nil {
-		fmt.Printf("Error renaming file %s to %s: %v\n", filename, newName, err)
+	if err := os.Rename(tempFilePath, newPath); err != nil {
+		fmt.Printf("Error renaming file: %v\n", filename, newName, err)
 		return false
 
 	}
@@ -206,7 +247,16 @@ func writeMetaData(metaData Metadata, metaDataPath string) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+
+	defer func() {
+		cerr := file.Close()
+		if cerr != nil {
+			// This will handle the close error
+			fmt.Printf("Error closing file: %v\n", cerr)
+			// Note: We're printing the error here, but depending on your application's requirements,
+			// you might want to handle this error differently, perhaps by logging it or aggregating it into an error report.
+		}
+	}()
 
 	encoder := json.NewEncoder(file)
 	err = encoder.Encode(metaData)
@@ -230,7 +280,16 @@ func logChange(logFile, oldName, newName, startDate, endDate string) {
 		fmt.Println("Error opening log file:", err)
 		return
 	}
-	defer file.Close()
+
+	defer func() {
+		cerr := file.Close()
+		if cerr != nil {
+			// This will handle the close error
+			fmt.Printf("Error closing file: %v\n", cerr)
+			// Note: We're printing the error here, but depending on your application's requirements,
+			// you might want to handle this error differently, perhaps by logging it or aggregating it into an error report.
+		}
+	}()
 
 	writer := csv.NewWriter(file)
 	defer writer.Flush()
@@ -253,16 +312,36 @@ func converter() {
 
 	reader := bufio.NewReader(os.Stdin)
 
-	settings, err := loadSettings()
-	if err != nil {
-		fmt.Println("Error loading settings:", err)
-		return
-	}
+	// Check if the directory is set in the settings.
+	if settings.Directory == "" {
+		// If no directory is set, propose the current executable's directory.
+		exe, err := os.Executable() // Get the path of the executable.
+		if err != nil {
+			fmt.Println("Failed to determine the current executable's directory:", err)
+			return
+		}
+		exeDir := filepath.Dir(exe) // Get the directory the executable is located in.
 
-	if settings.Directory != "" {
-		fmt.Println("Current directory in settings:", settings.Directory)
+		// Prompt the user to confirm using the current directory.
+		fmt.Printf("No directory set in settings. Would you like to use the current directory? (%s) [Y/n]: ", exeDir)
+		choice, _ := reader.ReadString('\n')
+		// Cleaning the input (removing \n or \r\n depending on the OS)
+		choice = strings.TrimSpace(choice)
+
+		if choice == "Y" || choice == "y" || choice == "" { // If user agrees or just hits enter (default yes).
+			settings.Directory = exeDir
+
+			err := saveSettings()
+			if err != nil {
+				fmt.Printf("Failed to save settings: %s\n", err)
+				return // Exit if unable to save settings
+			}
+		} else {
+			fmt.Println("Operation cancelled by the user.")
+			return // Exit the function since the user did not agree.
+		}
 	} else {
-		fmt.Println("No directory set in settings.")
+		fmt.Println("Current directory in settings:", settings.Directory)
 	}
 
 	// Count CSV files to be processed
@@ -292,19 +371,32 @@ func converter() {
 	}
 
 	successfulCount := 0
+	errorEncountered := false // New variable to track if any file processing failed.
 
 	for _, file := range files {
 		if file.Name() == "rename_log.csv" {
 			continue
 		}
 		if strings.HasSuffix(file.Name(), ".csv") {
-			if processFile(settings.Directory, file.Name()) { // Process the file and check if it was successful
+			success := processFile(settings.Directory, file.Name()) // Process the file and store if it was successful
+			if success {
 				successfulCount++
+			} else {
+				errorEncountered = true // Set the error flag if a file fails to process.
 			}
 		}
 	}
 
-	fmt.Printf("%d files were successfully converted.\n", successfulCount)
-	//fmt.Println("Press 'Enter' to exit...")
-	//reader.ReadString('\n')
+	// Provide feedback based on the outcomes of file processing.
+	if successfulCount > 0 {
+		fmt.Printf("%d files were successfully converted.\n", successfulCount)
+	}
+	if errorEncountered {
+		fmt.Println("Some files were not processed due to errors.")
+	}
+
+	if successfulCount == 0 && !errorEncountered {
+		fmt.Println("No files were available or matched the criteria for processing.")
+	}
+
 }

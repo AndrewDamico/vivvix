@@ -19,7 +19,6 @@ func clearScreen() {
 
 func MainMenu() {
 	clearScreen()
-	getSettings()
 	var choice int64 = -1
 
 	scanner := bufio.NewScanner(os.Stdin)
@@ -66,7 +65,6 @@ func MainMenu() {
 		case 3:
 			clearScreen()
 			optionsMenu()
-			//menuReset()
 		default:
 			fmt.Println("Invalid choice! Please try again.")
 		}
@@ -79,14 +77,6 @@ func MainMenu() {
 }
 
 func optionsMenu() {
-	clearScreen()
-	fmt.Println("Configuration Menu")
-	fmt.Println()
-
-	// determine which set to test on
-
-	var choice int64 = -1
-
 	scanner := bufio.NewScanner(os.Stdin)
 
 	menuReset := func() {
@@ -97,8 +87,27 @@ func optionsMenu() {
 	}
 
 	for {
-		fmt.Println("1. View Import Directory")
-		fmt.Println("2. Set Import Directory")
+		// Reload settings each time we display the options, to ensure we show the most recent values
+		settings := getSettings()
+
+		clearScreen()
+		fmt.Println("Configuration Menu")
+		fmt.Println()
+
+		autoDeleteStatus := "Disabled"
+		if settings.AutoDelete {
+			autoDeleteStatus = "Enabled"
+		}
+
+		directoryStatus := "None"
+		if settings.Directory != "" {
+			directoryStatus = settings.Directory
+		}
+
+		var choice int64 = -1
+
+		fmt.Printf("1. Current directory for processing: [%s]\n", directoryStatus)
+		fmt.Printf("2. Auto-delete of files after processing: [%s]\n", autoDeleteStatus)
 		fmt.Println("Press Enter to Return to Previous Menu")
 
 		var err error
@@ -115,14 +124,15 @@ func optionsMenu() {
 			fmt.Println()
 		case 1:
 			clearScreen()
-			fmt.Println("Import Directory")
-			printCurrentDirectory()
+			fmt.Println("Please set the new working directory")
+			setSettings("Directory")
 			menuReset()
 		case 2:
 			clearScreen()
-			fmt.Println("Please set the new working directory")
-			setSettings()
+			fmt.Println("Please set auto delete of files after processing")
+			setSettings("AutoDelete")
 			menuReset()
+
 		default:
 			clearScreen()
 			return
@@ -132,8 +142,5 @@ func optionsMenu() {
 			clearScreen()
 			return
 		}
-		//fmt.Println("Press Enter to continue...")
-		//scanner.Scan() // Wait for user to press Enter
-
 	}
 }
