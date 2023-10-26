@@ -36,8 +36,9 @@ func MainMenu() {
 		fmt.Println()
 		fmt.Println("Please choose one of the following options:")
 		fmt.Println("1. Convert Files")
-		fmt.Println("2. View Existing Coverage")
-		fmt.Println("3. Configuration Menu")
+		fmt.Println("2. Combine Files")
+		fmt.Println("3. View Existing Coverage")
+		fmt.Println("4. Configuration Menu")
 		fmt.Println("0. Exit")
 
 		var err error
@@ -56,13 +57,17 @@ func MainMenu() {
 			clearScreen()
 			converter()
 			menuReset()
-		// get coverage
 		case 2:
+			clearScreen()
+			combiner()
+			menuReset()
+		// get coverage
+		case 3:
 			clearScreen()
 			findMissingDates()
 			menuReset()
 		// set options
-		case 3:
+		case 4:
 			clearScreen()
 			optionsMenu()
 		default:

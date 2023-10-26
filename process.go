@@ -24,9 +24,43 @@ type DateRange struct {
 }
 
 type Metadata struct {
-	FileName  string `json:"FileName"`
-	StartDate string `json:"StartDate"`
-	EndDate   string `json:"EndDate"`
+	FileName      string `json:"FileName"`
+	OriginalFile  string `json:"OriginalFile"`
+	StartDate     string `json:"StartDate"`
+	EndDate       string `json:"EndDate"`
+	WeekStart     string `json:"WeekStart"`
+	DayCount      int    `json:"DayCount"`
+	Type          string `json:"Type"`
+	NObservations int    `json:"NObservations"`
+}
+
+func getWeekStart(date time.Time) time.Time {
+	// Function to calculate the start of the week (Monday)
+	// we consider Monday as the start of the week
+	offset := int(time.Monday - date.Weekday())
+	if offset > 0 {
+		offset = -6
+	}
+
+	weekStart := date.AddDate(0, 0, offset)
+	return weekStart
+}
+
+func getDayCount(startDate, endDate time.Time) int {
+	// Function to calculate the number of days between two dates
+	return int(endDate.Sub(startDate).Hours()/24) + 1 // +1 because the end date is inclusive
+}
+
+func getType(dayCount int, searchIndicator string) string {
+	// Determine the "type" based on the searchIndicator and dayCount.
+	if searchIndicator == "_S" {
+		return "search"
+	} else if searchIndicator == "_W" {
+		return "no search"
+	} else if dayCount < 7 {
+		return "partial"
+	}
+	return "weekly"
 }
 
 // parser reads a string and extracts the dates
@@ -63,7 +97,7 @@ func parser(line string) DateRange {
 	}
 }
 
-func safeClose(file *os.File) {
+func SafeClose(file *os.File) {
 	// safely closes a file if it is not already closed. Avoids unnecessary errors.
 	if file == nil {
 		return // If the file reference is nil, we don't need to do anything.
@@ -99,7 +133,7 @@ func processFile(dir, filename string) bool {
 		return false
 	}
 
-	defer safeClose(tempFile)
+	defer SafeClose(tempFile)
 
 	scanner := bufio.NewScanner(file)
 	writer := bufio.NewWriter(tempFile)
@@ -150,11 +184,30 @@ func processFile(dir, filename string) bool {
 		return false
 	}
 
+	processedDir := dir + "/processed"
+	processedPath := processedDir + "/" + filename
+
+	// Create 'processed' folder if it doesn't exist
+	if _, err := os.Stat(processedDir); os.IsNotExist(err) {
+		err := os.MkdirAll(processedDir, 0755)
+		if err != nil {
+			fmt.Printf("Error creating directory %s: %v\n", processedDir, err)
+			return false
+
+		}
+	}
+
 	if settings.AutoDelete {
 
 		// Delete the original file.
 		if err = os.Remove(filePath); err != nil {
 			fmt.Printf("Error removing original file: %v\n", err)
+			return false
+		}
+	} else {
+		// Move the file by renaming its path.
+		if err = os.Rename(filePath, processedPath); err != nil {
+			fmt.Printf("Error moving file to processed folder: %v\n", err)
 			return false
 		}
 	}
@@ -177,13 +230,48 @@ func processFile(dir, filename string) bool {
 		return false // Return false because the process failed at an important step.
 	}
 
-	startDate := dateRange.StartDate
-	newName := startDate + ".csv"
+	// Parse the dates to *time.Time, as we need them to calculate WeekStart and DayCount
+	tStart, _ := time.Parse("01022006", dateRange.StartDate)
+	tEnd, _ := time.Parse("01022006", dateRange.EndDate)
+
+	// Calculate WeekStart and DayCount
+	weekStart := getWeekStart(tStart)
+	dayCount := getDayCount(tStart, tEnd)
+
+	// Determine the appropriate file name based on whether the week is complete and which day it starts on.
+	partialWeekIndicator := ""
+	if dayCount < 7 {
+		if tStart.Weekday() == time.Monday { // the week is partial, and starts on a Monday
+			partialWeekIndicator = "_1"
+		} else { // the week is partial, but does not start on a Monday
+			partialWeekIndicator = "_2"
+		}
+	}
+
+	// Determine if this is only a "search" related dataframe
+	searchIndicator := ""
+	if strings.Contains(filename, "_S") {
+		searchIndicator = "_S"
+	} else if strings.Contains(filename, "_W") {
+		searchIndicator = "_W"
+	}
+
+	newName := weekStart.Format("01022006") + partialWeekIndicator + searchIndicator + ".csv"
 	validateDir := dir + "/validated"
-	newPath := dir + "/validated/" + newName
+	partialDir := dir + "/partial"
 
 	// Close the file explicitly before renaming
-	defer safeClose(file)
+	defer SafeClose(file)
+
+	// Create 'partial' folder if it doesn't exist
+	if _, err := os.Stat(partialDir); os.IsNotExist(err) {
+		err := os.MkdirAll(partialDir, 0755)
+		if err != nil {
+			fmt.Printf("Error creating directory %s: %v\n", partialDir, err)
+			return false
+
+		}
+	}
 
 	// Create 'validated' folder if it doesn't exist
 	if _, err := os.Stat(validateDir); os.IsNotExist(err) {
@@ -205,17 +293,30 @@ func processFile(dir, filename string) bool {
 		}
 	}
 
+	var newPath string
+
+	reportType := getType(dayCount, searchIndicator)
+
+	if reportType == "weekly" {
+		newPath = validateDir + "/" + newName
+	} else {
+		newPath = partialDir + "/" + newName
+	}
+
 	if err := os.Rename(tempFilePath, newPath); err != nil {
 		fmt.Printf("Error renaming file: %v\n", filename, newName, err)
 		return false
-
 	}
 
-	// After file is renamed, create metadata
 	metaData := Metadata{
-		FileName:  newName,
-		StartDate: dateRange.StartDate,
-		EndDate:   dateRange.EndDate,
+		FileName:      newName,
+		OriginalFile:  filename,
+		StartDate:     dateRange.StartDate,
+		EndDate:       dateRange.EndDate,
+		WeekStart:     weekStart.Format("20060102"),
+		DayCount:      dayCount,
+		Type:          reportType,
+		NObservations: lineCount - 6, //to account for header and initial rows removed
 	}
 
 	// Log the change
@@ -228,7 +329,6 @@ func processFile(dir, filename string) bool {
 		// handle error
 		fmt.Println("Error writing metadata:", err)
 	}
-
 	return true
 }
 
@@ -240,7 +340,7 @@ func writeMetaData(metaData Metadata, metaDataPath string) error {
 		return err
 	}
 
-	defer safeClose(file)
+	defer SafeClose(file)
 
 	encoder := json.NewEncoder(file)
 	err = encoder.Encode(metaData)
@@ -266,7 +366,7 @@ func logChange(logFile, oldName, newName, startDate, endDate string) {
 		return
 	}
 
-	defer safeClose(file)
+	defer SafeClose(file)
 
 	writer := csv.NewWriter(file)
 	defer writer.Flush()
