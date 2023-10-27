@@ -1,3 +1,7 @@
+// VIVVIX AdSpender Conversion App
+// Copyright (c) 2023 Northwestern University
+// Author: Andrew D'Amico
+// Date: 10/26/2023
 package main
 
 import (
@@ -97,7 +101,7 @@ func combineCSVFiles(files []string, combinedFilePath string) error {
 		return err
 	}
 	// Do not close here; instead, defer the close operation after confirming the file is open.
-	defer combinedFile.Close()
+	defer SafeClose(combinedFile)
 
 	writer := csv.NewWriter(combinedFile)
 	// Ensure the writer buffer is flushed when done.
@@ -116,7 +120,7 @@ func combineCSVFiles(files []string, combinedFilePath string) error {
 		// Read the current CSV file's records.
 		records, err := reader.ReadAll()
 		if err != nil {
-			csvFile.Close() // Close the file promptly, avoiding defer in the loop.
+			SafeClose(csvFile) // Close the file promptly, avoiding defer in the loop.
 			return err
 		}
 
@@ -128,7 +132,7 @@ func combineCSVFiles(files []string, combinedFilePath string) error {
 		// Write records to the combined CSV file.
 		err = writer.WriteAll(records)
 		if err != nil {
-			csvFile.Close() // Close the file promptly, avoiding defer in the loop.
+			SafeClose(csvFile) // Close the file promptly, avoiding defer in the loop.
 			return err
 		}
 

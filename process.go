@@ -283,7 +283,7 @@ func processFile(dir, filename string) bool {
 		fmt.Printf("Error opening temporary file for reading: %v\n", err)
 		return false
 	}
-	defer tempFile.Close() // ensure the file is closed after this function completes
+	defer SafeClose(tempFile) // ensure the file is closed after this function completes
 
 	// Create a new temporary file that will store the final version of the CSV.
 	finalTempFilePath := filePath + ".final.tmp"
@@ -292,7 +292,7 @@ func processFile(dir, filename string) bool {
 		fmt.Printf("Error creating final temporary file: %v\n", err)
 		return false
 	}
-	defer finalTempFile.Close() // ensure the file is closed after this function completes
+	defer SafeClose(finalTempFile)
 
 	reader := csv.NewReader(tempFile)
 	rewriter := csv.NewWriter(finalTempFile)
@@ -370,7 +370,7 @@ func processFile(dir, filename string) bool {
 		return false
 	}
 
-	tempFile.Close()
+	SafeClose(tempFile)
 
 	// Now, we don't need the original temporary file anymore. We can delete it.
 	if err := os.Remove(tempFilePath); err != nil {
@@ -419,7 +419,7 @@ func processFile(dir, filename string) bool {
 		newPath = partialDir + "/" + newName
 	}
 
-	finalTempFile.Close()
+	SafeClose(finalTempFile)
 
 	if err := os.Rename(finalTempFilePath, newPath); err != nil {
 		fmt.Printf("Error renaming file: %v\n", filename, newName, err)
